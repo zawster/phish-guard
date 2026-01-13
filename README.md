@@ -81,7 +81,7 @@ PhishGuard is a machine learning-powered phishing detection system that analyzes
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/phish-guard.git
+git clone https://github.com/zawster/phish-guard.git
 cd phish-guard
 
 # Install dependencies

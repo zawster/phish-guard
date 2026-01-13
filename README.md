@@ -246,6 +246,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [PhishTank](https://www.phishtank.com/) - Phishing URL database
 - [Tranco List](https://tranco-list.eu/) - Top websites ranking
+- [Claude Code](https://claude.ai/claude-code) with Opus 4.5 - AI-assisted development for interface design and API structure
 - [scikit-learn](https://scikit-learn.org/) - Machine learning library
 - [FastAPI](https://fastapi.tiangolo.com/) - Web framework
 

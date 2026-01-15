@@ -86,7 +86,6 @@ PhishGuard is a machine learning-powered phishing detection system that analyzes
 ### Prerequisites
 
 - Python 3.11+
-- pip
 
 ### Setup
 
@@ -150,7 +149,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/detect \
 | GET | `/api/v1/stats/daily` | Daily detection trend |
 | GET | `/health` | Health check |
 
-## Project Structure
+<!-- ## Project Structure
 
 ```
 phish-guard/
@@ -182,7 +181,7 @@ phish-guard/
 ├── tranco_7N42X.csv             # Tranco legitimate domains
 ├── requirements.txt
 └── README.md
-```
+``` -->
 
 ## Feature Extraction
 

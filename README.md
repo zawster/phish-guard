@@ -7,6 +7,17 @@ Real-time phishing URL detection system using Machine Learning and PhishTank dat
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+## Screenshots
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### Alerts
+![Alerts](screenshots/alerts.png)
+
+### Alert Detail
+![Alert Detail](screenshots/alert_detail.png)
+
 ## Overview
 
 PhishGuard is a machine learning-powered phishing detection system that analyzes URLs in real-time to identify potential phishing attempts. It combines a trained Random Forest classifier with PhishTank database lookups to provide accurate threat detection.

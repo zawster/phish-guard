@@ -1,0 +1,37 @@
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.25
+aiosqlite==0.19.0
+
+# ML & Data
+scikit-learn==1.4.0
+pandas==2.2.0
+numpy==1.26.3
+joblib==1.3.2
+
+# URL Processing
+tldextract==5.1.1
+validators==0.22.0
+
+# HTTP Client
+httpx==0.26.0
+aiohttp==3.9.1
+
+# Templates
+jinja2==3.1.3
+
+# Configuration
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Utilities
+websockets==12.0
+
+# Testing
+pytest==8.0.0
+pytest-asyncio==0.23.3

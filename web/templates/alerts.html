@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="mb-0">Alerts</h2>
+        <p class="text-muted">Manage phishing detection alerts</p>
+    </div>
+    <div class="col-auto">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary active" data-filter="all">All</button>
+            <button type="button" class="btn btn-outline-primary" data-filter="new">New</button>
+            <button type="button" class="btn btn-outline-primary" data-filter="acknowledged">Acknowledged</button>
+            <button type="button" class="btn btn-outline-primary" data-filter="resolved">Resolved</button>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card danger">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">New Alerts</h6>
+                <h2 class="card-title mb-0" id="stat-new">--</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Acknowledged</h6>
+                <h2 class="card-title mb-0" id="stat-acknowledged">--</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Resolved</h6>
+                <h2 class="card-title mb-0" id="stat-resolved">--</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card primary">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">False Positives</h6>
+                <h2 class="card-title mb-0" id="stat-false-positive">--</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts Table -->
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Alert List</h5>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="severity-filter" style="width: auto;">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadAlerts()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 100px;">Severity</th>
+                        <th style="width: 100px;">Status</th>
+                        <th>URL</th>
+                        <th>Target</th>
+                        <th>Confidence</th>
+                        <th>Time</th>
+                        <th style="width: 150px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="alerts-table">
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center" id="pagination">
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Alert Detail Modal -->
+<div class="modal fade" id="alertModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Alert Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modal-content">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" id="btn-acknowledge" onclick="updateAlert('acknowledged')">
+                    Acknowledge
+                </button>
+                <button type="button" class="btn btn-success" id="btn-resolve" onclick="updateAlert('resolved')">
+                    Resolve
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="btn-false-positive" onclick="updateAlert('false_positive')">
+                    False Positive
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentFilter = 'all';
+    let currentSeverity = '';
+    let currentPage = 1;
+    let currentAlertId = null;
+    const pageSize = 20;
+
+    // Filter buttons
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            currentPage = 1;
+            loadAlerts();
+        });
+    });
+
+    // Severity filter
+    document.getElementById('severity-filter').addEventListener('change', (e) => {
+        currentSeverity = e.target.value;
+        currentPage = 1;
+        loadAlerts();
+    });
+
+    // Load stats
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/v1/alerts/counts');
+            const counts = await res.json();
+
+            document.getElementById('stat-new').textContent = counts['new'] || 0;
+            document.getElementById('stat-acknowledged').textContent = counts['acknowledged'] || 0;
+            document.getElementById('stat-resolved').textContent = counts['resolved'] || 0;
+            document.getElementById('stat-false-positive').textContent = counts['false_positive'] || 0;
+        } catch (e) {
+            console.error('Failed to load stats:', e);
+        }
+    }
+
+    // Load alerts
+    async function loadAlerts() {
+        const tbody = document.getElementById('alerts-table');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
+
+        try {
+            let url = `/api/v1/alerts?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
+            if (currentFilter !== 'all') {
+                url += `&status=${currentFilter}`;
+            }
+            if (currentSeverity) {
+                url += `&severity=${currentSeverity}`;
+            }
+
+            const res = await fetch(url);
+            const alerts = await res.json();
+
+            if (alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No alerts found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = alerts.map(alert => `
+                <tr>
+                    <td>
+                        <span class="badge bg-${getSeverityColor(alert.severity)}">
+                            ${alert.severity.toUpperCase()}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${getStatusColor(alert.status)}">
+                            ${formatStatus(alert.status)}
+                        </span>
+                    </td>
+                    <td class="text-truncate" style="max-width: 250px;" title="${escapeHtml(alert.url || '')}">
+                        ${escapeHtml(alert.url || '--')}
+                    </td>
+                    <td>${escapeHtml(alert.target || '--')}</td>
+                    <td>${alert.confidence ? (alert.confidence * 100).toFixed(0) + '%' : '--'}</td>
+                    <td>${formatTime(alert.created_at)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showAlert(${alert.id})">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Error loading alerts</td></tr>`;
+            console.error('Failed to load alerts:', e);
+        }
+    }
+
+    // Show alert details
+    async function showAlert(alertId) {
+        currentAlertId = alertId;
+        const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+        const content = document.getElementById('modal-content');
+        content.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+        modal.show();
+
+        try {
+            const res = await fetch(`/api/v1/alerts/${alertId}`);
+            const alert = await res.json();
+
+            content.innerHTML = `
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <span class="badge bg-${getSeverityColor(alert.severity)} me-2">${alert.severity.toUpperCase()}</span>
+                            <span class="badge bg-${getStatusColor(alert.status)}">${formatStatus(alert.status)}</span>
+                        </div>
+                        <small class="text-muted">${formatTime(alert.created_at)}</small>
+                    </div>
+                    <h5>${escapeHtml(alert.title)}</h5>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-muted">URL</label>
+                    <div class="p-2 bg-light rounded font-monospace text-break">
+                        ${escapeHtml(alert.url || '--')}
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Confidence</label>
+                        <div class="fs-4 fw-bold">${alert.confidence ? (alert.confidence * 100).toFixed(0) + '%' : '--'}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Target Brand</label>
+                        <div class="fs-4">${escapeHtml(alert.target || '--')}</div>
+                    </div>
+                </div>
+
+                ${alert.description ? `
+                <div class="mb-4">
+                    <label class="form-label text-muted">Details</label>
+                    <pre class="p-3 bg-light rounded" style="white-space: pre-wrap;">${escapeHtml(alert.description)}</pre>
+                </div>
+                ` : ''}
+
+                ${alert.acknowledged_at ? `
+                <div class="alert alert-info">
+                    <i class="bi bi-clock me-2"></i>Acknowledged: ${formatTime(alert.acknowledged_at)}
+                </div>
+                ` : ''}
+
+                ${alert.resolved_at ? `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>Resolved: ${formatTime(alert.resolved_at)}
+                    ${alert.resolved_by ? ` by ${escapeHtml(alert.resolved_by)}` : ''}
+                </div>
+                ` : ''}
+            `;
+
+            // Update button visibility
+            const btnAck = document.getElementById('btn-acknowledge');
+            const btnResolve = document.getElementById('btn-resolve');
+            const btnFP = document.getElementById('btn-false-positive');
+
+            btnAck.style.display = alert.status === 'new' ? 'block' : 'none';
+            btnResolve.style.display = ['new', 'acknowledged'].includes(alert.status) ? 'block' : 'none';
+            btnFP.style.display = ['new', 'acknowledged'].includes(alert.status) ? 'block' : 'none';
+        } catch (e) {
+            content.innerHTML = '<div class="alert alert-danger">Failed to load alert details</div>';
+            console.error('Failed to load alert:', e);
+        }
+    }
+
+    // Update alert status
+    async function updateAlert(status) {
+        if (!currentAlertId) return;
+
+        try {
+            const res = await fetch(`/api/v1/alerts/${currentAlertId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('alertModal')).hide();
+                loadAlerts();
+                loadStats();
+            } else {
+                alert('Failed to update alert');
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    // Helpers
+    function getSeverityColor(severity) {
+        const colors = { critical: 'danger', high: 'warning', medium: 'info', low: 'secondary' };
+        return colors[severity] || 'secondary';
+    }
+
+    function getStatusColor(status) {
+        const colors = { new: 'danger', acknowledged: 'warning', resolved: 'success', false_positive: 'secondary' };
+        return colors[status] || 'secondary';
+    }
+
+    function formatStatus(status) {
+        return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function formatTime(isoString) {
+        if (!isoString) return '--';
+        const date = new Date(isoString);
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000);
+
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initialize
+    loadStats();
+    loadAlerts();
+
+    // Refresh periodically
+    setInterval(() => {
+        loadStats();
+        if (currentFilter === 'new') {
+            loadAlerts();
+        }
+    }, 30000);
+</script>
+{% endblock %}

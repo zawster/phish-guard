@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-0">URL Checker</h2>
+        <p class="text-muted">Analyze URLs for phishing indicators using ML and PhishTank database</p>
+    </div>
+</div>
+
+<!-- URL Check Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form id="check-form">
+                    <div class="mb-3">
+                        <label for="url-input" class="form-label">Enter URL to analyze</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                            <input type="text" class="form-control" id="url-input"
+                                   placeholder="https://example.com/login" autofocus>
+                            <button class="btn btn-primary px-4" type="submit" id="check-btn">
+                                <i class="bi bi-shield-check me-1"></i>Analyze
+                            </button>
+                        </div>
+                        <div class="form-text">Enter any URL to check if it's potentially a phishing attempt</div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Result Section -->
+<div id="result-section" style="display: none;">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card" id="result-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div id="result-icon" class="fs-1"></div>
+                        </div>
+                        <div class="col">
+                            <h3 id="result-title" class="mb-1"></h3>
+                            <p id="result-subtitle" class="mb-0 text-muted"></p>
+                        </div>
+                        <div class="col-auto">
+                            <div class="text-center">
+                                <div id="confidence-value" class="fs-2 fw-bold"></div>
+                                <small class="text-muted">Confidence</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-cpu me-2"></i>Detection Details</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td class="text-muted">ML Score</td>
+                            <td class="text-end fw-bold" id="ml-score">--</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">ML Prediction</td>
+                            <td class="text-end" id="ml-prediction">--</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">PhishTank Match</td>
+                            <td class="text-end" id="phishtank-match">--</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">PhishTank ID</td>
+                            <td class="text-end" id="phishtank-id">--</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Target Brand</td>
+                            <td class="text-end" id="target-brand">--</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Detection Source</td>
+                            <td class="text-end" id="detection-source">--</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Suspicious Indicators</h5>
+                </div>
+                <div class="card-body" id="indicators-list">
+                    <p class="text-muted">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Extracted Features</h5>
+                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#features-collapse">
+                        Toggle Details
+                    </button>
+                </div>
+                <div class="collapse" id="features-collapse">
+                    <div class="card-body">
+                        <div class="row" id="features-grid">
+                            <p class="text-muted">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Checks -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Checks</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Status</th>
+                                <th>URL</th>
+                                <th>Confidence</th>
+                                <th>Source</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Check URL form submission
+    document.getElementById('check-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const url = document.getElementById('url-input').value.trim();
+        if (!url) return;
+
+        const btn = document.getElementById('check-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
+
+        try {
+            const res = await fetch('/api/v1/detect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.detail || 'Analysis failed');
+            }
+
+            const result = await res.json();
+            displayResult(result);
+            loadHistory();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-shield-check me-1"></i>Analyze';
+        }
+    });
+
+    // Display result
+    function displayResult(result) {
+        const section = document.getElementById('result-section');
+        const card = document.getElementById('result-card');
+        const icon = document.getElementById('result-icon');
+        const title = document.getElementById('result-title');
+        const subtitle = document.getElementById('result-subtitle');
+        const confidence = document.getElementById('confidence-value');
+
+        section.style.display = 'block';
+
+        if (result.is_phishing) {
+            card.className = 'card result-phishing';
+            icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger"></i>';
+            title.textContent = 'PHISHING DETECTED';
+            title.className = 'mb-1 text-danger';
+            subtitle.textContent = result.phishtank_target
+                ? `This URL appears to be targeting ${result.phishtank_target}`
+                : 'This URL shows signs of being a phishing attempt';
+            confidence.className = 'fs-2 fw-bold text-danger';
+        } else {
+            card.className = 'card result-safe';
+            icon.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+            title.textContent = 'URL APPEARS SAFE';
+            title.className = 'mb-1 text-success';
+            subtitle.textContent = 'No phishing indicators detected';
+            confidence.className = 'fs-2 fw-bold text-success';
+        }
+
+        confidence.textContent = (result.confidence * 100).toFixed(0) + '%';
+
+        // Detection details
+        document.getElementById('ml-score').textContent = (result.ml_score * 100).toFixed(1) + '%';
+        document.getElementById('ml-prediction').innerHTML = result.ml_prediction
+            ? '<span class="badge bg-danger">Phishing</span>'
+            : '<span class="badge bg-success">Safe</span>';
+        document.getElementById('phishtank-match').innerHTML = result.phishtank_match
+            ? '<span class="badge bg-danger">Found</span>'
+            : '<span class="badge bg-secondary">Not Found</span>';
+        document.getElementById('phishtank-id').textContent = result.phishtank_id || '--';
+        document.getElementById('target-brand').textContent = result.phishtank_target || '--';
+        document.getElementById('detection-source').textContent = result.detection_source.toUpperCase();
+
+        // Suspicious indicators
+        displayIndicators(result.features);
+
+        // Features grid
+        displayFeatures(result.features);
+
+        // Scroll to result
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Display suspicious indicators
+    function displayIndicators(features) {
+        const container = document.getElementById('indicators-list');
+        const indicators = [];
+
+        if (features.has_ip_address) indicators.push({ text: 'URL contains IP address', severity: 'danger' });
+        if (features.is_suspicious_tld) indicators.push({ text: 'Suspicious TLD detected', severity: 'danger' });
+        if (features.brand_mismatch) indicators.push({ text: 'Brand name mismatch', severity: 'danger' });
+        if (features.has_suspicious_path) indicators.push({ text: 'Suspicious path keywords', severity: 'warning' });
+        if (features.has_at_symbol) indicators.push({ text: 'Contains @ symbol', severity: 'warning' });
+        if (features.has_punycode) indicators.push({ text: 'Uses punycode (IDN)', severity: 'warning' });
+        if (features.has_double_slash_in_path) indicators.push({ text: 'Double slash in path', severity: 'warning' });
+        if (features.has_suspicious_params) indicators.push({ text: 'Suspicious query parameters', severity: 'warning' });
+        if (features.has_login_keyword) indicators.push({ text: 'Contains login keyword', severity: 'info' });
+        if (features.has_verify_keyword) indicators.push({ text: 'Contains verify keyword', severity: 'info' });
+        if (features.domain_has_digits) indicators.push({ text: 'Domain contains digits', severity: 'info' });
+        if (!features.uses_https) indicators.push({ text: 'Not using HTTPS', severity: 'info' });
+        if (features.num_subdomains > 2) indicators.push({ text: 'Multiple subdomains', severity: 'info' });
+
+        if (indicators.length === 0) {
+            container.innerHTML = '<p class="text-success mb-0"><i class="bi bi-check-circle me-2"></i>No suspicious indicators detected</p>';
+        } else {
+            container.innerHTML = indicators.map(i => `
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-${i.severity} me-2">${i.severity.toUpperCase()}</span>
+                    ${i.text}
+                </div>
+            `).join('');
+        }
+    }
+
+    // Display features
+    function displayFeatures(features) {
+        const container = document.getElementById('features-grid');
+
+        const categories = {
+            'Length Features': ['url_length', 'domain_length', 'path_length', 'query_length', 'subdomain_length'],
+            'Count Features': ['num_dots', 'num_hyphens', 'num_slashes', 'num_digits', 'num_letters'],
+            'Domain Features': ['num_subdomains', 'tld_length', 'is_common_tld', 'is_suspicious_tld', 'domain_has_digits'],
+            'Security': ['uses_https', 'has_ip_address', 'has_port', 'has_punycode'],
+            'Entropy': ['domain_entropy', 'path_entropy', 'url_entropy'],
+        };
+
+        let html = '';
+        for (const [category, keys] of Object.entries(categories)) {
+            html += `<div class="col-md-4 mb-3">
+                <h6 class="text-muted mb-2">${category}</h6>
+                <table class="table table-sm">`;
+            for (const key of keys) {
+                if (features[key] !== undefined) {
+                    let value = features[key];
+                    if (typeof value === 'boolean') {
+                        value = value ? '<i class="bi bi-check text-success"></i>' : '<i class="bi bi-x text-danger"></i>';
+                    } else if (typeof value === 'number' && !Number.isInteger(value)) {
+                        value = value.toFixed(2);
+                    }
+                    html += `<tr><td class="text-muted">${formatFeatureName(key)}</td><td class="text-end">${value}</td></tr>`;
+                }
+            }
+            html += '</table></div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function formatFeatureName(name) {
+        return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    // Load history
+    async function loadHistory() {
+        try {
+            const res = await fetch('/api/v1/detect/history?limit=10');
+            const history = await res.json();
+            const tbody = document.getElementById('history-table');
+
+            if (history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No checks yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = history.map(check => `
+                <tr>
+                    <td>
+                        ${check.is_phishing
+                            ? '<span class="badge bg-danger">Phishing</span>'
+                            : '<span class="badge bg-success">Safe</span>'}
+                    </td>
+                    <td class="text-truncate" style="max-width: 300px;" title="${escapeHtml(check.url)}">
+                        ${escapeHtml(check.url)}
+                    </td>
+                    <td>${(check.confidence * 100).toFixed(0)}%</td>
+                    <td>${check.detection_source}</td>
+                    <td>${formatTime(check.checked_at)}</td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('Failed to load history:', e);
+        }
+    }
+
+    function formatTime(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000);
+
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+        return date.toLocaleDateString();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Load history on page load
+    loadHistory();
+</script>
+{% endblock %}

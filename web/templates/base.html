@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Phishing Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --danger-color: #dc2626;
+            --success-color: #16a34a;
+            --warning-color: #d97706;
+        }
+        body {
+            background-color: #f8fafc;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .stat-card .card-title {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .stat-card .card-subtitle {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-card.danger { border-left: 4px solid var(--danger-color); }
+        .stat-card.success { border-left: 4px solid var(--success-color); }
+        .stat-card.warning { border-left: 4px solid var(--warning-color); }
+        .stat-card.primary { border-left: 4px solid var(--primary-color); }
+        .alert-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .severity-critical { color: #dc2626; }
+        .severity-high { color: #ea580c; }
+        .severity-medium { color: #d97706; }
+        .severity-low { color: #65a30d; }
+        .result-safe {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            border: 1px solid #86efac;
+        }
+        .result-phishing {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border: 1px solid #fca5a5;
+        }
+        .feature-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            margin: 0.125rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-shield-check me-2"></i>Phishing Detection
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if title == 'Dashboard' %}active{% endif %}" href="/">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if title == 'URL Checker' %}active{% endif %}" href="/checker">
+                            <i class="bi bi-search me-1"></i>URL Checker
+                        </a>
+                    </li>
+                    <li class="nav-item position-relative">
+                        <a class="nav-link {% if title == 'Alerts' %}active{% endif %}" href="/alerts">
+                            <i class="bi bi-bell me-1"></i>Alerts
+                            <span class="alert-badge" id="alert-count" style="display: none;">0</span>
+                        </a>
+                    </li>
+                </ul>
+                <span class="navbar-text">
+                    <span class="badge bg-light text-dark" id="model-status">
+                        <i class="bi bi-cpu me-1"></i>Loading...
+                    </span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="mt-5 py-4 text-center text-muted">
+        <div class="container">
+            <small>Phishing Detection System v1.0 - Powered by ML + PhishTank</small>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Update model status and alert count
+        async function updateStatus() {
+            try {
+                // Health check
+                const healthRes = await fetch('/health');
+                const health = await healthRes.json();
+                const modelStatus = document.getElementById('model-status');
+                if (health.model_loaded) {
+                    modelStatus.innerHTML = `<i class="bi bi-cpu me-1"></i>Model v${health.model_version || 'loaded'}`;
+                    modelStatus.classList.remove('bg-warning');
+                    modelStatus.classList.add('bg-light', 'text-dark');
+                } else {
+                    modelStatus.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Model not loaded';
+                    modelStatus.classList.remove('bg-light', 'text-dark');
+                    modelStatus.classList.add('bg-warning', 'text-dark');
+                }
+
+                // Alert count
+                const alertRes = await fetch('/api/v1/alerts/counts');
+                const counts = await alertRes.json();
+                const newCount = counts['new'] || 0;
+                const alertBadge = document.getElementById('alert-count');
+                if (newCount > 0) {
+                    alertBadge.textContent = newCount > 99 ? '99+' : newCount;
+                    alertBadge.style.display = 'flex';
+                } else {
+                    alertBadge.style.display = 'none';
+                }
+            } catch (e) {
+                console.error('Status update failed:', e);
+            }
+        }
+
+        // Update on load and periodically
+        updateStatus();
+        setInterval(updateStatus, 30000);
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

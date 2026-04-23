@@ -15,7 +15,7 @@ Real-time phishing URL detection system using Machine Learning and PhishTank dat
 ### Alerts:
 ![Alerts](screenshots/alerts.png)
 
-### Alert Detail
+### Alert Detail:
 ![Alert Detail](screenshots/alert_detail.png)
 
 ## Overview

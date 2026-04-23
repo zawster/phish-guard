@@ -9,10 +9,10 @@ Real-time phishing URL detection system using Machine Learning and PhishTank dat
 
 ## Screenshots
 
-### Dashboard
+### Dashboard:
 ![Dashboard](screenshots/dashboard.png)
 
-### Alerts
+### Alerts:
 ![Alerts](screenshots/alerts.png)
 
 ### Alert Detail
